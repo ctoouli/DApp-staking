@@ -9,6 +9,7 @@ contract TokenFarm {
     address public owner;
     DappToken public dappToken;
     DaiToken public daiToken;
+    bool internal locked;
     
 
     address[] public stakers;
@@ -43,8 +44,15 @@ contract TokenFarm {
         hasStaked[msg.sender] = true;
     }
 
+    modifier noRentrancy() {
+        require(!locked, "no rentrancy!");
+        locked = true;
+        _;
+        locked = false;
+    }
+
     // 2. Unstaking Tokens (withdraw)
-    function unstakeTokens() public {
+    function unstakeTokens() public noRentrancy {
         // Fetch staking balance
         uint balance = stakingBalance[msg.sender];
 
@@ -62,10 +70,7 @@ contract TokenFarm {
     }
 
     // 3. Issuing Tokens (interest)
-    function issueTokens() public {
-        // Owner can be the only one who calls the function
-        require(msg.sender == owner, "caller must be the owner");
-
+    function issueTokens() public isOwner() {
         // Issue tokens to all stakers
         for(uint i = 0; i < stakers.length; i++) {
             address recipient = stakers[i];
@@ -74,6 +79,12 @@ contract TokenFarm {
                 dappToken.transfer(recipient, balance);
             }  
         }
+    }
+
+    modifier isOwner() {
+        // Owner can be the only one who calls the function
+        require(msg.sender == owner, "caller must be the owner");
+        _;
     }
 
 }
